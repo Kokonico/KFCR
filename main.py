@@ -29,7 +29,7 @@ HOST = "0.0.0.0" # set host to run KFCR on.
 # VERSION
 
 KFCR_VERSION = 1
-KFCR_RELEASE = "A" # A for alpha, B for beta, S for stable.
+KFCR_RELEASE = "S" # A for alpha, B for beta, S for stable.
 VERSION_FULL = KFCR_RELEASE + str(KFCR_VERSION)
 
 # VERSION END
