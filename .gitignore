@@ -1,0 +1,9 @@
+**.pythonlibs
+**__pycache__
+**.pyc
+**.lock
+**pyproject.toml
+**.replit
+**.nix
+**.upm
+**.log
