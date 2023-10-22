@@ -1,3 +1,4 @@
+import copy
 import json
 import os
 from datetime import datetime
@@ -14,6 +15,9 @@ MESSAGE_FILE = "messages.json" # set file to save message history to.
 PORT = 81 # set port to run KFCR on.
 HOST = "0.0.0.0" # set host to run KFCR on.
 # 0.0.0.0 is public IP, 127.0.0.1 is local IP.
+disallowed_chars = ['"', '\\', '\n', '\r', '\t', '\b', '\f']
+# used to prevent breaks/injections
+
 
 ## CONFIG END ##
 
@@ -28,11 +32,40 @@ HOST = "0.0.0.0" # set host to run KFCR on.
 
 # VERSION
 
-KFCR_VERSION = 1
-KFCR_RELEASE = "S" # A for alpha, B for beta, S for stable.
+KFCR_VERSION = 2
+KFCR_RELEASE = "A" # A for alpha, B for beta, S for stable.
 VERSION_FULL = KFCR_RELEASE + str(KFCR_VERSION)
 
 # VERSION END
+
+
+def check_json(json_obj, disallow):
+    if isinstance(json_obj, dict):
+        for key, value in json_obj.items():
+            if any(char in str(value) for char in disallow):
+                return False
+            if not check_json(value, disallow):
+                return False
+    elif isinstance(json_obj, list):
+        for item in json_obj:
+            if not check_json(item, disallow):
+                return False
+    return True
+
+def stripped(json_obj, expected_keys):
+    if isinstance(json_obj, dict):
+        stripped_obj = copy.deepcopy(json_obj)
+        keys_to_remove = [key for key in stripped_obj if key not in expected_keys]
+        for key in keys_to_remove:
+            del stripped_obj[key]
+        for key, value in stripped_obj.items():
+            stripped_obj[key] = stripped(value, expected_keys)
+        return stripped_obj
+    elif isinstance(json_obj, list):
+        return [stripped(item, expected_keys) for item in json_obj]
+    else:
+        return json_obj
+
 
 app = Flask(__name__)
 CORS(app)
@@ -69,8 +102,11 @@ def retrieve_history():
             return Response("Invalid JSON", status=400)
 
         if "content" in data and "user" in data:
-            data["timestamp"] = str(datetime.now())
-            message_history.append(data)
+            if not check_json(data, disallowed_chars):
+                return Response("Invalid characters in JSON", status=400)
+            
+            data["timestamp"] = str(datetime.now().timestamp())
+            message_history.append(stripped(data, ["content", "user", "timestamp"]))
 
             with open(MESSAGE_FILE, 'w') as history:
                 # append JSON object to MESSAGE_FILE

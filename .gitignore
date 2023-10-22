@@ -7,3 +7,5 @@
 **.nix
 **.upm
 **.log
+messages.json
+**.breakpoints
