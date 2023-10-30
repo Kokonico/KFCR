@@ -13,7 +13,6 @@ template_file = 'index.html'  # set the page to respond with when web browser is
 # must be a .html file in the "templates" directory
 
 DB_FILE = "messages.db"  # set file to save message history to.
-MESSAGE_FILE = "messages.json"
 PORT = 81  # set port to run KFCR on.
 HOST = "0.0.0.0"  # set host to run KFCR on.
 # 0.0.0.0 is public IP, 127.0.0.1 is local IP.
