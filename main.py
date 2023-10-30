@@ -9,7 +9,7 @@ from flask_cors import CORS
 
 ## CONFIG ##
 
-template_file = 'index.html'  # set to template to respond with when web browser is used.
+template_file = 'index.html'  # set the page to respond with when web browser is used
 # must be a .html file in the "templates" directory
 
 DB_FILE = "messages.db"  # set file to save message history to.
@@ -19,9 +19,6 @@ HOST = "0.0.0.0"  # set host to run KFCR on.
 # 0.0.0.0 is public IP, 127.0.0.1 is local IP.
 
 ## CONFIG END ##
-
-
-
 
 ## ! PAST THIS POINT IS INTERNAL CODE ! ##
 ## ! DO NOT EDIT UNLESS YOU KNOW WHAT YOU ARE DOING, IT MIGHT BREAK ! ##
@@ -33,13 +30,14 @@ HOST = "0.0.0.0"  # set host to run KFCR on.
 
 KFCR_VERSION = 3
 KFCR_RELEASE = "A"  # A for alpha, B for beta, S for stable.
-VERSION_FULL = KFCR_RELEASE + str(KFCR_VERSION)
+KFCR_BRANCH = "SQLite test branch"  # branch of version
+VERSION_FULL = KFCR_RELEASE + str(KFCR_VERSION) + f" ({KFCR_BRANCH})"
 
 # VERSION END
 
 # IMPORTANT EXEC
 
-conn = sqlite3.connect(DB_FILE)
+conn = sqlite3.connect(DB_FILE, check_same_thread=False)
 cursor = conn.cursor()
 
 cursor.execute("""
@@ -51,39 +49,44 @@ timestamp INTEGER NOT NULL,
 sys BOOLEAN NOT NULL);
 """)
 
+conn.commit()
+conn.close()
+
+
+## FUNCTIONS
+
 
 def now():
+  """get unix time"""
   return time.time_ns() // 1_000_000
 
 
-def check_json(json_obj, disallow):
-  if isinstance(json_obj, dict):
-    for key, value in json_obj.items():
-      if any(char in str(value) for char in disallow):
-        return False
-      if not check_json(value, disallow):
-        return False
-  elif isinstance(json_obj, list):
-    for item in json_obj:
-      if not check_json(item, disallow):
-        return False
-  return True
+def get_db():
+  conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+  cursor = conn.cursor()
+  return conn, cursor
 
 
-def stripped(json_obj, expected_keys):
-  if isinstance(json_obj, dict):
-    stripped_obj = copy.deepcopy(json_obj)
-    keys_to_remove = [key for key in stripped_obj if key not in expected_keys]
-    for key in keys_to_remove:
-      del stripped_obj[key]
-    for key, value in stripped_obj.items():
-      stripped_obj[key] = stripped(value, expected_keys)
-    return stripped_obj
-  elif isinstance(json_obj, list):
-    return [stripped(item, expected_keys) for item in json_obj]
-  else:
-    return json_obj  # I love overengineering
+def store(data):
+  conn, cursor = get_db()
 
+  try:
+    sqlmessage = (str(data["user"]), str(data["content"]), int(data["timestamp"]), bool(data["sys"]))
+  except KeyError:
+    raise ValueError("Missing required data.") from KeyError
+  except ValueError:
+    raise ValueError("Invalid data.") from ValueError
+  
+  cursor.execute(
+      """
+        INSERT INTO messages (user, content, timestamp, sys)
+        VALUES (?, ?, ?, ?)
+        """, sqlmessage)
+  conn.commit()
+  conn.close()
+
+
+## FUNCTIONS END
 
 app = Flask(__name__)
 CORS(app)
@@ -101,6 +104,7 @@ def verify():
 
 ## MAIN ##
 
+
 @app.route('/messages/post', methods=['POST'])
 def post_message():
   # append the message to the messages.json file
@@ -114,16 +118,9 @@ def post_message():
     data["timestamp"] = now()
     data["sys"] = False
     try:
-      sqlmessage = (str(data["user"]), str(data["content"]),
-                    int(data["timestamp"]), bool(data["sys"]))
+      store(data)
     except ValueError:
       return Response("Invalid JSON", status=400)
-
-    cursor.execute(
-      """
-      INSERT INTO messages(user, content, timestamp, sys)
-      VALUES(?, ?, ?, ?)
-      """, (sqlmessage, ))
 
     return Response('message successfully sent!', status=201)
   else:
@@ -131,52 +128,85 @@ def post_message():
     return Response("Malformed message JSON", status=400)
 
 
-
-
-@app.route('messages/last/<path:msg_num>', methods=['GET'])
+@app.route('/messages/last/<path:msg_num>', methods=['GET'])
 def load_history(msg_num):
-  # return the last <msg_num> messages
   try:
     msg_int = int(msg_num)
   except ValueError:
     return Response("Invalid message number", status=400)
 
-  # return last <msg_num> messages from SQLite
-  cursor.execute("SELECT * FROM messages WHERE id >= ?", (msg_int, ))
+  conn, cursor = get_db()
+
+  cursor.execute("SELECT * FROM messages ORDER BY id DESC LIMIT ?", (msg_int, ))
 
   rows = cursor.fetchall()
 
+  conn.commit()
+  conn.close()
+
   messages = []
   for row in rows:
-    message = dict(row)
+    # convert sys to boolean from 1/0 state
+    truesys = None
+    if row[4] == 1:
+      truesys = True
+    elif row[4] == 0:
+      truesys = False
+    # convert tuple to message dict
+    message = {
+      "id": row[0],
+      "user": row[1],
+      "content": row[2],
+      "timestamp": row[3],
+      "sys": truesys
+    }
     messages.append(message)
 
   return jsonify(messages)
-
-
 
 
 @app.route('/messages/since/<path:unixstamp>', methods=['GET'])
 def get_messages_since(unixstamp):
   # get all messages since unix timestamp from SQLite
   # if the timestamp is invalid, return HTTP status code 400
+
+  conn, cursor = get_db()
+  
   try:
     unixstamp_int = int(unixstamp)
   except ValueError:
     return Response("Bad timestamp", status=400)
 
   # get all messages since unix timestamp from SQLite
-  cursor.execute("SELECT * FROM messages WHERE timestamp >= ?", (unixstamp_int, ))
+  cursor.execute("SELECT * FROM messages WHERE timestamp >= ?",
+                 (unixstamp_int, ))
 
   # return the messages as a JSON object
   rows = cursor.fetchall()
 
+  conn.commit()
+  conn.close()
+  
   messages = []
   for row in rows:
-    message = dict(row)
+    # convert sys to boolean from 1/0 state
+    truesys = None
+    if row[4] == 1:
+      truesys = True
+    elif row[4] == 0:
+      truesys = False
+    # convert tuple to message dict
+    message = {
+      "id": row[0],
+      "user": row[1],
+      "content": row[2],
+      "timestamp": row[3],
+      "sys": truesys
+    }
     messages.append(message)
 
   return jsonify(messages)
+
 
 ## MAIN END
 
@@ -195,19 +225,21 @@ def release():
 def number():
   return Response(str(KFCR_VERSION), status=200)
 
+@app.route('/version/branch', methods=['GET'])
+def branch():
+  return Response(KFCR_BRANCH, status=200)
 
 # EXEC
 
-# Check if the JSON file is empty or not
-if os.path.getsize(MESSAGE_FILE) <= 2:
-  boot = [{
-      "user": "KFCR",
-      "content": "Booting KFCR",
-      "timestamp": now(),
-      "sys": True
-  }]
-  with open(MESSAGE_FILE, 'w') as bw:
-    json.dump(boot, bw)
+# check if the DB file contains no messages
+boot = {
+    "user": "KFCR",
+    "content": "Booting KFCR",
+    "timestamp": now(),
+    "sys": True
+}
+store(boot)
+
 
 # run flask app
 if __name__ == '__main__':

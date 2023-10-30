@@ -16,6 +16,7 @@ each message is a JSON object consisting of four keys
 
 ```json
 {
+  "id": "(integer) the messages unique identifier.",
   "user": "(string) the username of the sender",
   "content": "(string) the message text",
   "timestamp": "(integer) time server received and proccessed message in milliseconds since Unix epoch",
@@ -48,5 +49,7 @@ to get the release channel of the KFCR instance on the server, send a GET reques
 this should return text that is either "A", alpha, "B", beta, or "S", stable
 
 to get the version number of the KFCR instance, send a GET request to "url/version/number".
+
+to get the branch that the chat server is running on, send a GET request to url/version/branch
 
 this is all to it. good luck ;)
