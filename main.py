@@ -207,6 +207,39 @@ def get_messages_since(unixstamp):
   return jsonify(messages)
 
 
+@app.route('/messages/sinceid/<path:mid>')
+def retrievesince(mid):
+  if isinstance(mid, int):
+      conn, cursor = get_db()
+      cursor.execute("SELECT * FROM messages WHERE id > ?", (mid, ))
+      rows = cursor.fetchall()
+
+      conn.commit()
+      conn.close()
+    
+      messages = []
+      for row in rows:
+        # convert sys to boolean from 1/0 state
+        truesys = None
+        if row[4] == 1:
+          truesys = True
+        elif row[4] == 0:
+          truesys = False
+        # convert tuple to message dict
+        message = {
+          "id": row[0],
+          "user": row[1],
+          "content": row[2],
+          "timestamp": row[3],
+          "sys": truesys
+        }
+        messages.append(message)
+
+  return jsonify(messages)
+      
+  else:
+      return Response('invalid message ID')
+
 ## MAIN END
 
 
