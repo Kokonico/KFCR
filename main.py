@@ -28,8 +28,8 @@ HOST = "0.0.0.0"  # set host to run KFCR on.
 # VERSION
 
 KFCR_VERSION = 3
-KFCR_RELEASE = "A"  # A for alpha, B for beta, S for stable.
-KFCR_BRANCH = "SQLite test branch"  # branch of version
+KFCR_RELEASE = "S"  # A for alpha, B for beta, S for stable.
+KFCR_BRANCH = "main"  # branch of version
 VERSION_FULL = KFCR_RELEASE + str(KFCR_VERSION) + f" ({KFCR_BRANCH})"
 
 # VERSION END
