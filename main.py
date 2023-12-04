@@ -242,7 +242,7 @@ def retrievesince(mid):
         }
         messages.append(message)
 
-  return jsonify(messages)
+        return jsonify(messages)
       
   else:
       return Response('invalid message ID')
