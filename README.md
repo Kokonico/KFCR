@@ -1,3 +1,7 @@
+# WARNING
+
+this is the ***highly unstable*** and ***insecure*** JSON branch. It only exists for ***Archiving purposes***. please **DO NOT** use in prod!
+
 # KFCR
 
 ## a simple chat server written in flask
