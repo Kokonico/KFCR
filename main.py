@@ -84,6 +84,26 @@ def store(data):
   conn.commit()
   conn.close()
 
+def convert_dict(tuple_list):
+  messages = []
+  for row in tuple_list:
+    # convert sys to boolean from 1/0 state
+    truesys = None
+    if row[4] == 1:
+      truesys = True
+    elif row[4] == 0:
+      truesys = False
+    # convert tuple to message dict
+    message = {
+      "id": row[0],
+      "user": row[1],
+      "content": row[2],
+      "timestamp": row[3],
+      "sys": truesys
+    }
+    messages.append(message)
+  return messages
+
 
 ## FUNCTIONS END
 
@@ -143,25 +163,7 @@ def load_history(msg_num):
   conn.commit()
   conn.close()
 
-  messages = []
-  for row in rows:
-    # convert sys to boolean from 1/0 state
-    truesys = None
-    if row[4] == 1:
-      truesys = True
-    elif row[4] == 0:
-      truesys = False
-    # convert tuple to message dict
-    message = {
-      "id": row[0],
-      "user": row[1],
-      "content": row[2],
-      "timestamp": row[3],
-      "sys": truesys
-    }
-    messages.append(message)
-
-  return jsonify(messages)
+  return jsonify(convert_dict(rows))
 
 
 @app.route('/messages/since/<path:unixstamp>', methods=['GET'])
@@ -183,28 +185,33 @@ def get_messages_since(unixstamp):
   # return the messages as a JSON object
   rows = cursor.fetchall()
 
-  conn.commit()
-  conn.close()
-  
-  messages = []
-  for row in rows:
-    # convert sys to boolean from 1/0 state
-    truesys = None
-    if row[4] == 1:
-      truesys = True
-    elif row[4] == 0:
-      truesys = False
-    # convert tuple to message dict
-    message = {
-      "id": row[0],
-      "user": row[1],
-      "content": row[2],
-      "timestamp": row[3],
-      "sys": truesys
-    }
-    messages.append(message)
+  return jsonify(convert_dict(rows))
 
-  return jsonify(messages)
+
+@app.route('/messages/id/<path:msgid>', methods=['GET'])
+def get_id(msgid):
+  # get message of id from SQLite
+  # if the id is invalid, return HTTP status code 400
+  # if the id does not exist, return 404.
+  # if the id exists, return the message as a JSON object
+  conn, cursor = get_db()
+  
+  try:
+    msgid_int = int(msgid)
+  except ValueError:
+    return Response("invalid id", status=400)
+  
+  cursor.execute("SELECT * FROM messages WHERE id = ?", (msgid_int, ))
+  
+  rows = cursor.fetchall()
+
+  try:
+    result = jsonify(convert_dict(rows)[0])
+  except IndexError:
+    return Response(f'no message with id "{msgid}"', status=404)
+  
+  return result
+  
 
 
 @app.route('/messages/sinceid/<path:mid>')
