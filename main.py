@@ -4,7 +4,7 @@ import os
 import sqlite3
 import time
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, escape
 from flask_cors import CORS
 
 ## CONFIG ##
@@ -210,7 +210,7 @@ def get_id(msgid):
   try:
     result = jsonify(convert_dict(rows)[0])
   except IndexError:
-    return Response(f'no message with id "{msgid}"', status=404)
+    return Response(f'no message with id "{escape(msgid)}"', status=404)
 
   return result
 
