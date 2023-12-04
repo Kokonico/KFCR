@@ -33,7 +33,8 @@ disallowed_chars = ['"', '\\', '\n', '\r', '\t', '\b', '\f']
 # VERSION
 
 KFCR_VERSION = 2
-KFCR_RELEASE = "A" # A for alpha, B for beta, S for stable.
+KFCR_RELEASE = "D" # A for alpha, B for beta, S for stable, D for deprecated.
+KFCR_BRANCH = "JSON"
 VERSION_FULL = KFCR_RELEASE + str(KFCR_VERSION)
 
 # VERSION END
@@ -138,15 +139,22 @@ def grab_latest_message():
 
 @app.route('/version', methods=['GET'])
 def grab_version():
-    return Response(VERSION_FULL, status=200)
+  return Response(VERSION_FULL, status=200)
+
 
 @app.route('/version/release', methods=['GET'])
 def release():
-    return Response(KFCR_RELEASE, status=200)
+  return Response(KFCR_RELEASE, status=200)
+
 
 @app.route('/version/number', methods=['GET'])
 def number():
-    return Response(str(KFCR_VERSION), status=200)
+  return Response(str(KFCR_VERSION), status=200)
+
+
+@app.route('/version/branch', methods=['GET'])
+def branch():
+  return Response(KFCR_BRANCH, status=200)
 
 
 
