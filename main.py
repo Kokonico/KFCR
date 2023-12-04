@@ -6,6 +6,9 @@ from datetime import datetime
 from flask import Flask, Response, render_template, request
 from flask_cors import CORS
 
+# this is deprecated.
+# no help will be provided.
+
 ## CONFIG ##
 
 template_file = 'index.html' # set to template to respond with when web browser is used.
@@ -35,7 +38,7 @@ disallowed_chars = ['"', '\\', '\n', '\r', '\t', '\b', '\f']
 KFCR_VERSION = 2
 KFCR_RELEASE = "D" # A for alpha, B for beta, S for stable, D for deprecated.
 KFCR_BRANCH = "JSON"
-VERSION_FULL = KFCR_RELEASE + str(KFCR_VERSION)
+VERSION_FULL = KFCR_RELEASE + str(KFCR_VERSION) + f" ({KFCR_BRANCH})"
 
 # VERSION END
 
