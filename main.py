@@ -51,7 +51,6 @@ sys BOOLEAN NOT NULL);
 conn.commit()
 conn.close()
 
-
 ## FUNCTIONS
 
 
@@ -70,12 +69,13 @@ def store(data):
   conn, cursor = get_db()
 
   try:
-    sqlmessage = (str(data["user"]), str(data["content"]), int(data["timestamp"]), bool(data["sys"]))
+    sqlmessage = (str(data["user"]), str(data["content"]),
+                  int(data["timestamp"]), bool(data["sys"]))
   except KeyError:
     raise ValueError("Missing required data.") from KeyError
   except ValueError:
     raise ValueError("Invalid data.") from ValueError
-  
+
   cursor.execute(
       """
         INSERT INTO messages (user, content, timestamp, sys)
@@ -83,6 +83,7 @@ def store(data):
         """, sqlmessage)
   conn.commit()
   conn.close()
+
 
 def convert_dict(tuple_list):
   messages = []
@@ -95,11 +96,11 @@ def convert_dict(tuple_list):
       truesys = False
     # convert tuple to message dict
     message = {
-      "id": row[0],
-      "user": row[1],
-      "content": row[2],
-      "timestamp": row[3],
-      "sys": truesys
+        "id": row[0],
+        "user": row[1],
+        "content": row[2],
+        "timestamp": row[3],
+        "sys": truesys
     }
     messages.append(message)
   return messages
@@ -108,7 +109,7 @@ def convert_dict(tuple_list):
 ## FUNCTIONS END
 
 app = Flask(__name__)
-CORS(app)
+cors = CORS(app, origins='*')
 
 
 @app.route('/', methods=['GET'])
@@ -156,7 +157,8 @@ def load_history(msg_num):
 
   conn, cursor = get_db()
 
-  cursor.execute("SELECT * FROM messages ORDER BY id DESC LIMIT ?", (msg_int, ))
+  cursor.execute("SELECT * FROM messages ORDER BY id DESC LIMIT ?",
+                 (msg_int, ))
 
   rows = cursor.fetchall()
 
@@ -172,7 +174,7 @@ def get_messages_since(unixstamp):
   # if the timestamp is invalid, return HTTP status code 400
 
   conn, cursor = get_db()
-  
+
   try:
     unixstamp_int = int(unixstamp)
   except ValueError:
@@ -195,57 +197,57 @@ def get_id(msgid):
   # if the id does not exist, return 404.
   # if the id exists, return the message as a JSON object
   conn, cursor = get_db()
-  
+
   try:
     msgid_int = int(msgid)
   except ValueError:
     return Response("invalid id", status=400)
-  
+
   cursor.execute("SELECT * FROM messages WHERE id = ?", (msgid_int, ))
-  
+
   rows = cursor.fetchall()
 
   try:
     result = jsonify(convert_dict(rows)[0])
   except IndexError:
     return Response(f'no message with id "{msgid}"', status=404)
-  
+
   return result
-  
 
 
 @app.route('/messages/sinceid/<path:mid>')
 def retrievesince(mid):
-  if isinstance(mid, int):
-      conn, cursor = get_db()
-      cursor.execute("SELECT * FROM messages WHERE id > ?", (mid, ))
-      rows = cursor.fetchall()
+  try:
+    nmid = int(mid)
+  except ValueError:
+    return Response("invalid ID", 400)
+  conn, cursor = get_db()
+  cursor.execute("SELECT * FROM messages WHERE id > ?", (nmid, ))
+  rows = cursor.fetchall()
 
-      conn.commit()
-      conn.close()
-    
-      messages = []
-      for row in rows:
-        # convert sys to boolean from 1/0 state
-        truesys = None
-        if row[4] == 1:
-          truesys = True
-        elif row[4] == 0:
-          truesys = False
-        # convert tuple to message dict
-        message = {
-          "id": row[0],
-          "user": row[1],
-          "content": row[2],
-          "timestamp": row[3],
-          "sys": truesys
-        }
-        messages.append(message)
+  conn.commit()
+  conn.close()
 
-        return jsonify(messages)
-      
-  else:
-      return Response('invalid message ID')
+  messages = []
+  for row in rows:
+    # convert sys to boolean from 1/0 state
+    truesys = None
+    if row[4] == 1:
+      truesys = True
+    elif row[4] == 0:
+      truesys = False
+    # convert tuple to message dict
+    message = {
+        "id": row[0],
+        "user": row[1],
+        "content": row[2],
+        "timestamp": row[3],
+        "sys": truesys
+    }
+    messages.append(message)
+
+  return jsonify(messages)
+
 
 ## MAIN END
 
@@ -264,9 +266,11 @@ def release():
 def number():
   return Response(str(KFCR_VERSION), status=200)
 
+
 @app.route('/version/branch', methods=['GET'])
 def branch():
   return Response(KFCR_BRANCH, status=200)
+
 
 # EXEC
 
@@ -278,7 +282,6 @@ boot = {
     "sys": True
 }
 store(boot)
-
 
 # run flask app
 if __name__ == '__main__':
