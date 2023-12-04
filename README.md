@@ -48,7 +48,7 @@ there are no sockets in KFCR. good luck ;)
 to get the full version id, send a GET request to "url/version"
 
 to get the release channel of the KFCR instance on the server, send a GET request to "url/version/release".
-this should return text that is either "A", alpha, "B", beta, or "S", stable
+this should return text that is either "A", alpha, "B", beta, "S", stable, or "D", deprecated.
 
 to get the version number of the KFCR instance, send a GET request to "url/version/number".
 
